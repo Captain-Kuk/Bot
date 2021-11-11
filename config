@@ -1,0 +1,14 @@
+[PathToDocs]
+path = e:\tests\docs
+path_temp = e:\tests\temp
+
+[TokenForTelegramBot]
+token = 1610997177:AAGmC3dTfxC6D_ZmHvoRn8Fodiq_I2DUtVI
+
+[ConnectRMQ]
+server = 127.0.0.1
+port = 5672
+username = monahero
+password = 1207990
+vhost = monahero
+exchange = X1CC
