@@ -31,7 +31,6 @@ def read_orgs_from_json():
     """
     with open(config.get('PathToDocs', 'path')+'\\domain.usr.json', mode='r', encoding='windows-1251') as ff:
         list_orgs = json.load(ff)
-
     return list_orgs
 
 
@@ -41,7 +40,7 @@ def get_list_org_for_user_id(curr_user: User, id_telegram=None):
         list_users = org['users']
         for usr in list_users:
             if 'id_telegram' in usr.keys():
-                if id_telegram == usr['id_telegram']:
+                if id_telegram == usr['id_telegram'] and usr['status'] == 0 and org['status'] == 0:
                     user_org = Organization(org['inn'], org['name'])
                     curr_user.list_org.append(user_org)
                     curr_user.username = usr['name']
