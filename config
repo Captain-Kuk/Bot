@@ -1,6 +1,7 @@
 [PathToDocs]
 path = e:\tests\docs
 path_temp = e:\tests\temp
+dbfilename = domain.tg.json
 
 [TokenForTelegramBot]
 token = 1610997177:AAGmC3dTfxC6D_ZmHvoRn8Fodiq_I2DUtVI
