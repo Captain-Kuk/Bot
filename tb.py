@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import time
 
 from aiogram import *
@@ -69,14 +70,18 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
 
 
 async def cmd_user_register(message: types.Message):
-
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(types.KeyboardButton(text="Отправить номер телефона.", request_contact=True))
-    await message.answer("Для отправки данных, нажмите кнопку внизу.", reply_markup=keyboard)
+    user = User()
+    curr_code = str(message.from_user.id)
+    if not get_list_org_for_user_id(user, curr_code):
+        keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard.add(types.KeyboardButton(text="Отправить номер телефона.", request_contact=True))
+        await message.answer("Для отправки данных, нажмите кнопку внизу.", reply_markup=keyboard)
+    else:
+        await message.answer(f'Ошибка. Пользователь {curr_code} уже зарегистрирован.')
 
 
 def watch_db_update(message: types.Message, user: types.User):
-    full_filename = config.get('PathToDocs', 'path')+'\\domain.usr.json'
+    full_filename = config.get('PathToDocs', 'path')+'\\' + config.get('PathToDocs', 'dbfilename')
     if not os.path.exists(full_filename):
         print("Ошибка: файл domain.usr.json не найден")
         return
@@ -87,26 +92,26 @@ def watch_db_update(message: types.Message, user: types.User):
         i += 1
         if timestamp != os.stat(full_filename).st_mtime:
             if get_list_org_for_user_id(user, str(message.contact.user_id)):
-                # await message.answer("Вы зарегистрированы.")
-                # await cmd_start(message)
                 return True
-    # await message.answer("Ошибка регистрации. Свяжитесь с администратором")
     return False
 
 
 async def cmd_start_user_register(message: types.Message, state: FSMContext):
     telegram_id: str
+    user = User()
+    # curr_code = str(message.from_user.id)
+    # if not get_list_org_for_user_id(user, curr_code):
     if message.contact is not None:
         keyboard2 = types.ReplyKeyboardRemove()
         await message.answer('Номер принят...', reply_markup=keyboard2)
-        user = User()
-        # if not get_list_org_for_user_id(user, str(message.contact.user_id)):
-        if get_list_org_for_user_phone(user, str(message.contact.phone_number)):
+        phone_number = re.sub(r'[^0-9]', '', str(message.contact.phone_number))
+        print(f"Номер телефона для регистрации: {phone_number}")
+        # user = User()
+        if get_list_org_for_user_phone(user, phone_number):
             user.telegram_id = str(message.contact.user_id)
-            user.phone = str(message.contact.phone_number)
-            # user.username = message.contact.first_name + " " + message.contact.last_name
-            data = json.dumps({'tgid': user.telegram_id, 'phone': user.phone}, indent=4, ensure_ascii=False)
-            send_data_to_rmq(data=data, routing_key='1cc.from.tg_user_register')
+            user.phone = phone_number
+            data = json.dumps({'tgID': user.telegram_id, 'phone': user.phone}, indent=4, ensure_ascii=False)
+            send_data_to_rmq(data=data, routing_key='1cc.from.tg_user_register', binary=False)
             await message.answer('Запрос на регистрацию принят. Ожидайте подтверждения.')
             if watch_db_update(message, user):
                 await message.answer("Вы зарегистрированы.")
@@ -115,6 +120,8 @@ async def cmd_start_user_register(message: types.Message, state: FSMContext):
                 await message.answer("Ошибка регистрации. Свяжитесь с администратором")
         else:
             await message.answer('Ошибка. Отказ в обслуживании')
+    # else:
+    #    await message.answer(f'Ошибка. Пользователь {curr_code} уже зарегистрирован.')
 
 
 async def check_path(pathname: str):
@@ -134,10 +141,10 @@ async def download_photo(message: types.Message, state: FSMContext):
             file_bytes = myfile.read()
         userdata = await state.get_data()
         send_data_to_rmq(data=file_bytes,  routing_key=f'1cc.from.tg_data_accept_'
-                                                       f'{message.from_user.id}_{userdata["chosen_org"]}')
+                                                       f'{message.from_user.id}_{userdata["chosen_org"]}', binary=True)
         await message.answer("OK. Фото получено.")
-        print('Получено изображение от ' + message.chat.first_name + ' ' + message.chat.last_name + ' с кодом: ' + str(
-            message.message_id))
+        # print('Получено изображение от ' + message.chat.first_name + ' ' + message.chat.last_name + ' с кодом: ' + str(
+        #     message.message_id))
 
 
 async def download_doc(message: types.Message,  state: FSMContext):
@@ -148,10 +155,10 @@ async def download_doc(message: types.Message,  state: FSMContext):
             file_bytes = myfile.read()
         userdata = await state.get_data()
         send_data_to_rmq(data=file_bytes,
-                         routing_key=f'1cc.from.tg_data_accept_{message.from_user.id}_{userdata["chosen_org"]}')
+                         routing_key=f'1cc.from.tg_data_accept_{message.from_user.id}_{userdata["chosen_org"]}', binary=True)
         await message.answer("OK. Документ получен.")
-        print('Получен документ от ' + message.chat.first_name + ' ' + message.chat.last_name + '_' +
-              message.document.file_name)
+        # print('Получен документ от ' + message.chat.first_name + ' ' + message.chat.last_name + '_' +
+        #     message.document.file_name)
 
 
 def register_handlers_common(dp: Dispatcher):
